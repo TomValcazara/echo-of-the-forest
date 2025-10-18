@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - TagLorePiece
+  - BushGroupTag
   layers:
   - Default
   - TransparentFX

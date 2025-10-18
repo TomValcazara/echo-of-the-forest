@@ -1,14 +1,29 @@
 using UnityEngine;
 using System.Collections;
-public class LorePieceController : MonoBehaviour
+using System.Collections.Generic;
+using UnityEngine.EventSystems;
+
+public class LorePieceController : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     private bool isClickable;
     public GameObject gameplayController;
-    
+    public List<GameObject> bushesGroups;
+
+    public Texture2D pointerCursor; // only need to set this one
+    public Vector2 pointerHotspot = Vector2.zero;
+    private Texture2D defaultCursor;
+    private Vector2 defaultHotspot;
+    public AudioClip clickClip;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        gameplayController = GameObject.Find("Gameplay Controller");        
+        gameplayController = GameObject.Find("Gameplay Controller");
+        
+        //Creates a random bush
+        int randPos = Random.Range(0, bushesGroups.Count);
+        Instantiate(bushesGroups[randPos], transform);
+
     }
 
     void Awake()
@@ -22,6 +37,14 @@ public class LorePieceController : MonoBehaviour
         // Debug.Log(gameObject);
         // Debug.Log(_isActive);
 
+        //Audio Source is starting disabled after first instance is destroied, for some reason.
+        AudioSource audio = GetComponent<AudioSource>();
+        if (!audio.enabled)
+        {
+            audio.enabled = true;
+        }
+        audio.clip = audio.clip; // force refresh    
+            
         isClickable = _isActive;
         if (_isActive)
         {
@@ -29,13 +52,7 @@ public class LorePieceController : MonoBehaviour
             //Debug.Log($"AudioSource enabled: {audio.enabled}, gameObject active: {audio.gameObject.activeInHierarchy}");
             
 
-            //Audio Source is starting disabled after first instance is destroied, for some reason.
-            AudioSource audio = GetComponent<AudioSource>();
-            if (!audio.enabled)
-            {
-                audio.enabled = true;
-            }
-            audio.clip = audio.clip; // force refresh        
+                
             audio.Play();
 
             //GetComponent<AudioSource>().Play();
@@ -45,6 +62,7 @@ public class LorePieceController : MonoBehaviour
         }
         else
         {
+            audio.Stop();
             //GetComponent<AudioSource>().mute = true;
             //Debug.Log("Gotin NOPE");
             //Stop Sound and make unclickable
@@ -59,7 +77,7 @@ public class LorePieceController : MonoBehaviour
         if (!isClickable) return; //Checks if it can click
 
         isClickable = false; //Makes sure there is no Double Click
-        
+        AudioSource.PlayClipAtPoint(clickClip, Vector3.zero); //Leafs sound
         gameplayController.GetComponent<GameplayController>().UpdateRound(); //Updates Round
          
 
@@ -84,6 +102,31 @@ public class LorePieceController : MonoBehaviour
     //     yield return null; // wait one frame
     //     gameplayController.GetComponent<GameplayController>().UpdateRound(); //Update Round
     //     Debug.Log("I was clicked pt6");
+    // }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (isClickable) {
+            Cursor.SetCursor(pointerCursor, pointerHotspot, CursorMode.Auto);
+        }
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        // Reverts back to whatever is defined in Player Settings
+        Cursor.SetCursor(defaultCursor, defaultHotspot, CursorMode.Auto);
+    }
+
+    // public void ResetCursor()
+    // {
+    //     // When clicked, restore the default cursor too
+    //     Cursor.SetCursor(defaultCursor, defaultHotspot, CursorMode.Auto);
+    // }
+    // public void ClickSound()
+    // {
+    //     //Debug.Log("Sound");
+    //     AudioSource.PlayClipAtPoint(clickClip, Vector3.zero); //Used this instead of having the AudioSource on the button, because when the canvas become inactive, all children elements get deactivate too, making the sound never play.
+
     // }
 
     // Update is called once per frame
