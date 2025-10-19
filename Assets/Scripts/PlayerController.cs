@@ -5,7 +5,7 @@ public class PlayerController : MonoBehaviour
 
     private float playerMovSpeed = 30f;
     public bool canMove = false;
-
+    public bool canFloat = true;
     private int limiteRange = 80;
     
     private SpriteRenderer spriteRenderer;
@@ -98,11 +98,14 @@ public class PlayerController : MonoBehaviour
 
     void FloatEffect()
     {
-        // Calculate offset without overwriting X/Z movement
-        float offsetY = Mathf.Sin(Time.time * floatSpeed) * floatAmplitude;
-        Vector3 pos = transform.position;
-        pos.y = baseY + offsetY;
-        transform.position = pos;
+        if (canFloat)
+        {
+            // Calculate offset without overwriting X/Z movement
+            float offsetY = Mathf.Sin(Time.time * floatSpeed) * floatAmplitude;
+            Vector3 pos = transform.position;
+            pos.y = baseY + offsetY;
+            transform.position = pos;            
+        }
     }
 
 }

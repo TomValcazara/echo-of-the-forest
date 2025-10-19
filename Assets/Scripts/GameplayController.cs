@@ -8,6 +8,8 @@ public class GameplayController : MonoBehaviour
 {
     public int currentRound = 0;
     public TextMeshProUGUI textRounds;
+
+    public TextMeshProUGUI textWarning;
     public List<GameObject> lorePieces = new List<GameObject>();
     private float elapsedTime = 0f;
     private bool isTimeRunning = false;
@@ -18,20 +20,45 @@ public class GameplayController : MonoBehaviour
     public GameObject canvasInfoLore;
     public GameObject pieceOfLoreDescription;
 
+    public GameObject mainCamera;
+
     public GameObject player;
     public string[] story;
+    public GameObject spawnManager;
+
+    private Color originalColor;
+
+    public GameObject hellPortal;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        story = new string[6]; 
 
+        //DragToHell();
+
+        //Creates teh fragments of the Lore
+        story = new string[6];
         story[0] = "The forest whispered tonight - a new arrival had drifted in, soft as doubt, pale as confession.\nThe sleeping ones stirred, their sighs weaving beneath the roots.";
         story[1] = "He took two slices, one murmured, their voice damp with envy.\nTwo! When one was enough for salvation.";
         story[2] = "Another sighed. It’s always the gentle ones who wander too far - loving too much, laughing too loud, wanting too freely.\nTheir pity dripped like prayer wax.";
         story[3] = "The fresh soul said nothing.\nHe remembered warmth, and hands that once fit his - forbidden, fleeting, holy.";
         story[4] = "Sin, whispered the wind. Sin for loving, sin for being, sin for not hiding.\nAnd the in-between bloomed with forgiveness no one believed in.";
         story[5] = "When dawn came, the sleeping ones fell quiet — ashamed, perhaps, or simply empty.\nThe fresh soul drifted on, too bright for limbo, too tender for The Red Garden Below.";
+
+    }
+
+    IEnumerator FadeLoopWarning()
+    {
+        float speed = 1f; 
+
+        while (true)
+        {
+            float t = (Mathf.Sin(Time.time * speed) + 1f) / 2f; // oscillates 0→1→0
+            Color c = originalColor;
+            c.a = t; // apply alpha
+            textWarning.color = c;
+            yield return null;
+        }
     }
 
     public void UpdateRound()
@@ -53,8 +80,8 @@ public class GameplayController : MonoBehaviour
                 child.gameObject.SetActive(false);
             }
         }
-            
-                
+
+
 
         //Reveals Fantastic Creature
         lorePieces[currentRound].transform.Find("FantasticCreature").gameObject.SetActive(true);
@@ -72,7 +99,7 @@ public class GameplayController : MonoBehaviour
 
         canvasInfoLore.GetComponent<CanvasGroup>().alpha = 0f;
         canvasInfoLore.SetActive(true);
-        StartCoroutine(FadeInPieceOfLore(canvasInfoLore.GetComponent<CanvasGroup>(), 1f));
+        StartCoroutine(FadeInCanvasGroup(canvasInfoLore.GetComponent<CanvasGroup>(), 1f));
 
         // if (currentRound < 5) //Only creats next Round if it isn't the last round
         // {
@@ -98,7 +125,7 @@ public class GameplayController : MonoBehaviour
 
 
 
-    IEnumerator FadeInPieceOfLore(CanvasGroup cg, float duration)
+    IEnumerator FadeInCanvasGroup(CanvasGroup cg, float duration)
     {
         float time = 0f;
         while (time < duration)
@@ -154,9 +181,121 @@ public class GameplayController : MonoBehaviour
         else
         {
             //Debug.Log("Finish Game");
-            FinishTheGame();
+            //FinishTheGame();
+            spawnManager.GetComponent<SpawnController>().SpawnFinalDoor();
+
+            //Flash A Warning for the final Door
+            textWarning.gameObject.SetActive(true);
+            originalColor = textWarning.color;
+            StartCoroutine(FadeLoopWarning());
+
         }
     }
+
+
+    public void DragToHell()
+    {
+
+        textWarning.gameObject.SetActive(false);
+
+        //Stops calming main music
+        mainCamera.GetComponent<AudioSource>().Stop();
+
+        //Locks player from moving
+        player.GetComponent<PlayerController>().canMove = false; //Stops the player from moving
+
+        isTimeRunning = false; //Stops and loads the timer
+        //canvasGameOver.Find("Text Time").text = FormatTime(elapsedTime);
+        canvasGameOver.transform.Find("Text Time").GetComponent<TextMeshProUGUI>().text = "Total time: " + FormatTime(elapsedTime);
+
+        //Adds Hell Portal
+        //Instantiate(hellPortal, new Vector3(player.transform.position.x, -0.9f, player.transform.position.z), Quaternion.identity);
+        // Adds Hell Portal and store the instance
+        GameObject portalInstance = Instantiate(hellPortal, new Vector3(player.transform.position.x, -1.9f, player.transform.position.z), Quaternion.identity);
+
+        //Animates to Hell
+        //StartCoroutine(HellAnimation());
+
+        //Stops Ghost floating
+        player.GetComponent<PlayerController>().canFloat = false;        
+
+        // Animates to Hell (pass the instance)
+        StartCoroutine(HellAnimation(portalInstance));
+
+    }
+    
+    IEnumerator HellAnimation(GameObject portalInstance)
+    {
+        //Debug.Log("#1#");
+        float speed = 0.25f;
+
+        Transform cylinder = portalInstance.transform.Find("Cylinder");
+        if (cylinder == null)
+        {
+            Debug.LogError("Cylinder not found inside hell portal!");
+            yield break;
+        }
+
+        // Cylinder: 0,1,0 → 3,1,3
+        yield return ScaleTo(cylinder, new Vector3(3, 1, 3), speed);
+
+        // Player: current → Y -3
+        Vector3 targetPos = player.transform.position;
+        targetPos.y = -3;
+        yield return MoveTo(player.transform, targetPos, speed);
+
+        // Cylinder: back to 0,1,0
+        yield return ScaleTo(cylinder, new Vector3(0, 1, 0), speed);
+
+        // End
+        //Debug.Log("#3#");
+        FinishTheGame();
+    }
+
+    IEnumerator MoveTo(Transform obj, Vector3 target, float duration)
+    {
+        Vector3 start = obj.position;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * duration;
+            obj.position = Vector3.Lerp(start, target, t);
+            yield return null;
+        }
+    }
+
+    IEnumerator ScaleTo(Transform obj, Vector3 target, float duration)
+    {
+        //Debug.Log("#4#");
+        Vector3 start = obj.localScale;
+        float t = 0f;
+        while (t < 1f)
+        {
+            //Debug.Log("#5#");
+            t += Time.deltaTime * duration;
+            obj.localScale = Vector3.Lerp(start, target, t);
+            yield return null;
+        }
+        //Debug.Log("#6#");
+    }
+
+
+    public void FinishTheGame()
+    {
+
+        
+        //Debug.Log("M3");
+        
+
+        
+
+        canvasGameOver.GetComponent<CanvasGroup>().alpha = 0f;
+        canvasGameOver.SetActive(true);
+        StartCoroutine(FadeInCanvasGroup(canvasGameOver.GetComponent<CanvasGroup>(), 1f));
+        //canvasGameOver.SetActive(true); //Reveals tha Game over Screen
+
+    }
+
     public void StartGame()
     {
         player.GetComponent<PlayerController>().canMove = true; //Allows Player to Move
@@ -184,17 +323,7 @@ public class GameplayController : MonoBehaviour
 
     }
 
-    private void FinishTheGame()
-    {
-        player.GetComponent<PlayerController>().canMove = false; //Stops the player from moving
 
-        isTimeRunning = false; //Stops and loads the timer
-        //canvasGameOver.Find("Text Time").text = FormatTime(elapsedTime);
-        canvasGameOver.transform.Find("Text Time").GetComponent<TextMeshProUGUI>().text = FormatTime(elapsedTime);
-
-        canvasGameOver.SetActive(true); //Reveals tha Game over Screen
-
-    }
 
     private string FormatTime(float time)
     {
